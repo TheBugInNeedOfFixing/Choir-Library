@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBF7FF">
+<title>Choir Score Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-app-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* ============================================================
+   FIREBASE  —  same project as your existing two pages.
+   Before this works you must ALSO turn on Google sign-in:
+   Firebase console → Authentication → Sign-in method → Google → Enable,
+   then Authentication → Settings → Authorized domains → add the domain
+   you host this file on (e.g. yourname.github.io).
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCDpexPcH9Ud5b_lZcFv9f5qnLRs4WH_BY",
+  authDomain: "choir-library-dbc40.firebaseapp.com",
+  projectId: "choir-library-dbc40",
+  storageBucket: "choir-library-dbc40.firebasestorage.app",
+  messagingSenderId: "1028837423281",
+  appId: "1:1028837423281:web:17fd930f98d37e686fca90"
+};
+
+/* Emails that always have admin access. */
+const SEED_ADMINS = [
+  "eeshaagarwal26@gmail.com",
+  "rglenister@sharonschools.net",
+  "aaronvesset@gmail.com"
+];
+/* No domain restriction — any Google account can sign in. */
+
+let fbReady=false, db=null, auth=null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  auth = firebase.auth();
+  fbReady = firebaseConfig.apiKey !== "YOUR_API_KEY";
+}catch(e){ console.error('Firebase init failed', e); }
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#FBF7FF;      /* pale lilac page */
+  --card:#FFFFFF;
+  --ink:#2B2340;        /* deep aubergine text */
+  --muted:#7B7292;
+  --line:#EBE3F5;
+  --line-2:#DCD1EC;
+
+  --plum:#5B3E96;       /* primary action */
+  --plum-soft:#EDE6FB;
+  --blush:#FF8FA3;      /* cutesy accent */
+  --blush-soft:#FFEDF1;
+  --mint:#2E9E7E;
+  --mint-soft:#E4F7F0;
+  --butter:#B5820A;
+  --butter-soft:#FFF4DC;
+  --rouge:#C4425A;
+  --rouge-soft:#FDE9ED;
+
+  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
+  --shadow:0 1px 2px rgba(43,35,64,.04), 0 8px 24px -12px rgba(43,35,64,.18);
+  --font:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Baloo 2","Outfit",system-ui,sans-serif;
+  --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+html,body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;-webkit-text-size-adjust:100%}
+body{min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+h1,h2,h3,.display{font-family:var(--display);font-weight:600;letter-spacing:-.01em}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:inherit}
+button{cursor:pointer}
+a{color:var(--plum)}
+:focus-visible{outline:2.5px solid var(--blush);outline-offset:2px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+[hidden]{display:none!important}
+
+/* ---------- signature: barcode rule ---------- */
+.barcode-rule{height:7px;width:100%;border-radius:99px;overflow:hidden;
+  background:repeating-linear-gradient(90deg,
+    var(--plum) 0 3px, transparent 3px 6px,
+    var(--blush) 6px 8px, transparent 8px 13px,
+    var(--plum) 13px 14px, transparent 14px 18px,
+    var(--mint) 18px 21px, transparent 21px 24px,
+    var(--plum) 24px 28px, transparent 28px 31px,
+    var(--blush) 31px 32px, transparent 32px 37px);
+  opacity:.8}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 16px;border-radius:99px;border:1.5px solid var(--line-2);
+  background:var(--card);color:var(--ink);font-weight:500;font-size:15px;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease}
+.btn:hover{border-color:var(--plum);color:var(--plum)}
+.btn:active{transform:translateY(1px)}
+.btn i{font-size:17px}
+.btn-primary{background:var(--plum);border-color:var(--plum);color:#fff;box-shadow:0 6px 16px -8px var(--plum)}
+.btn-primary:hover{background:#4c3283;border-color:#4c3283;color:#fff}
+.btn-blush{background:var(--blush);border-color:var(--blush);color:#5a1f2c}
+.btn-blush:hover{background:#ff7d94;border-color:#ff7d94;color:#5a1f2c}
+.btn-sm{padding:7px 12px;font-size:13.5px;border-radius:99px}
+.btn-icon{padding:8px;width:36px;height:36px;border-radius:12px}
+.btn-danger:hover{border-color:var(--rouge);color:var(--rouge)}
+.btn:disabled{opacity:.45;pointer-events:none}
+
+/* ---------- fields ---------- */
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.field label,.lbl{font-size:12.5px;font-weight:500;color:var(--muted);letter-spacing:.01em}
+input[type=text],input[type=number],input[type=email],select,textarea{
+  width:100%;padding:11px 13px;border-radius:var(--r);border:1.5px solid var(--line-2);
+  background:var(--card);font-size:16px;transition:border-color .12s, box-shadow .12s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--plum);box-shadow:0 0 0 3px var(--plum-soft)}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237B7292' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center;padding-right:36px}
+textarea{line-height:1.5;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+
+/* ---------- auth screen ---------- */
+#gate{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 18px}
+.gate-card{width:100%;max-width:420px;background:var(--card);border:1.5px solid var(--line);
+  border-radius:var(--r-xl);padding:30px 26px 26px;box-shadow:var(--shadow);text-align:center}
+.gate-mark{width:70px;height:70px;margin:0 auto 16px;border-radius:24px;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--plum-soft),var(--blush-soft));border:1.5px solid var(--line)}
+.gate-mark i{font-size:34px;color:var(--plum)}
+.gate-card h1{font-size:27px;line-height:1.15;margin-bottom:6px}
+.gate-sub{color:var(--muted);font-size:14.5px;line-height:1.5;margin-bottom:22px}
+.gate-card .barcode-rule{margin:20px 0 18px}
+.gate-fine{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:14px}
+.btn-google{width:100%;padding:13px;font-size:15.5px;gap:10px}
+.btn-guest{width:100%;padding:12px;font-size:15px;background:none;border-color:var(--line-2)}
+
+/* ---------- app shell ---------- */
+#app{max-width:1080px;margin:0 auto;padding-bottom:92px}
+.topbar{position:sticky;top:0;z-index:40;background:rgba(251,247,255,.92);backdrop-filter:blur(12px);
+  border-bottom:1.5px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-top))}
+.topbar-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.brand-mark{width:38px;height:38px;flex:none;border-radius:13px;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--plum-soft),var(--blush-soft));border:1.5px solid var(--line)}
+.brand-mark i{font-size:19px;color:var(--plum)}
+.brand-txt{min-width:0}
+.brand-name{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who{display:flex;align-items:center;gap:8px;flex:none}
+.who-chip{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 6px;border-radius:99px;
+  background:var(--card);border:1.5px solid var(--line-2);max-width:190px}
+.avatar{width:26px;height:26px;flex:none;border-radius:99px;background:var(--blush-soft);color:var(--rouge);
+  display:grid;place-items:center;font-size:11.5px;font-weight:600;font-family:var(--display)}
+.who-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who-name small{display:block;font-size:10.5px;color:var(--muted);font-weight:400}
+
+/* view toggle */
+.viewtog{display:flex;background:var(--plum-soft);border-radius:99px;padding:3px;gap:2px}
+.viewtog button{border:none;background:none;padding:6px 13px;border-radius:99px;font-size:13px;font-weight:500;color:var(--plum)}
+.viewtog button.on{background:var(--card);box-shadow:0 1px 4px rgba(43,35,64,.12);color:var(--ink)}
+
+/* tabs — desktop pills */
+.tabs{display:flex;gap:6px;padding:10px 16px 0;max-width:1080px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{position:relative;display:flex;align-items:center;gap:7px;padding:9px 15px;border:1.5px solid transparent;background:none;
+  border-radius:99px;font-size:14px;font-weight:500;color:var(--muted);white-space:nowrap}
+.tab i{font-size:17px}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--card);border-color:var(--line-2);color:var(--plum);box-shadow:var(--shadow)}
+.tab .dot{width:7px;height:7px;border-radius:99px;background:var(--blush)}
+
+/* tabs — mobile bottom bar */
+@media(max-width:719px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:45;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
+    border-top:1.5px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:2px;justify-content:space-around;max-width:none}
+  .tab{flex-direction:column;gap:2px;font-size:10.5px;padding:6px 4px;flex:1;border-radius:14px;min-width:0}
+  .tab i{font-size:21px}
+  .tab.on{background:var(--plum-soft);border-color:transparent;box-shadow:none}
+  .tab span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .tab .dot{position:absolute;margin:-20px 0 0 20px}
+}
+
+.wrap{padding:16px}
+.panel{display:none}
+.panel.on{display:block;animation:rise .22s ease}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- cards ---------- */
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-t{font-family:var(--display);font-weight:600;font-size:16.5px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.card-t i{color:var(--plum);font-size:19px}
+.card-d{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+.card-d:last-child{margin-bottom:0}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:720px){.grid2{grid-template-columns:1fr 1fr}.grid2 .card{margin-bottom:0}}
+
+/* ---------- notes / alerts ---------- */
+.note{display:flex;gap:9px;align-items:flex-start;padding:11px 13px;border-radius:var(--r);font-size:13.5px;line-height:1.5;border:1.5px solid}
+.note i{font-size:17px;flex:none;margin-top:1px}
+.note+.note,.note.mt{margin-top:10px}
+.n-info{background:var(--plum-soft);border-color:#DCCFF6;color:#4A3182}
+.n-ok{background:var(--mint-soft);border-color:#BCE9DA;color:#1D6E58}
+.n-warn{background:var(--butter-soft);border-color:#F3DEA9;color:#8A6207}
+.n-err{background:var(--rouge-soft);border-color:#F6C5CF;color:#9E2E44}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.p-out{background:var(--butter-soft);color:var(--butter)}
+.p-in{background:var(--mint-soft);color:var(--mint)}
+.p-mut{background:var(--paper);color:var(--muted);border:1px solid var(--line-2)}
+
+/* ---------- scanner ---------- */
+.scanbox{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#241C36;
+  aspect-ratio:4/3;max-height:60vh;display:grid;place-items:center}
+.scanbox video{width:100%!important;height:100%!important;object-fit:cover}
+.scanbox>div{width:100%}
+.scan-idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:22px;color:#EDE6FB}
+.scan-idle i{font-size:38px;display:block;margin-bottom:10px;color:var(--blush)}
+.scan-idle p{font-size:14px;line-height:1.5;opacity:.85;max-width:280px;margin:0 auto}
+.reticle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:74%;height:38%;pointer-events:none;
+  border-radius:14px;box-shadow:0 0 0 9999px rgba(36,28,54,.42)}
+.reticle::before,.reticle::after{content:"";position:absolute;left:0;right:0;height:3px;background:var(--blush);border-radius:99px}
+.reticle::before{top:0}.reticle::after{bottom:0}
+.sweep{position:absolute;left:6%;right:6%;height:2px;background:linear-gradient(90deg,transparent,var(--blush),transparent);
+  animation:sweep 2.1s ease-in-out infinite}
+@keyframes sweep{0%,100%{top:8%}50%{top:92%}}
+.cam-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+
+/* ---------- tables / lists ---------- */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -18px;padding:0 18px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+th{text-align:left;padding:9px 10px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;border-bottom:1.5px solid var(--line-2);white-space:nowrap}
+td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--paper)}
+code,.mono{font-family:var(--mono);font-size:12.5px;background:var(--plum-soft);color:#4A3182;padding:2px 7px;border-radius:7px;white-space:nowrap}
+.empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+.empty i{font-size:30px;display:block;margin-bottom:10px;opacity:.4;color:var(--plum)}
+.list{max-height:340px;overflow-y:auto;margin:0 -6px;padding:0 6px}
+.item{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item-main{flex:1;min-width:0}
+.item-t{font-size:14.5px;font-weight:500;line-height:1.3}
+.item-s{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-bottom:14px}
+.metric{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);padding:14px 10px;text-align:center;box-shadow:var(--shadow)}
+.metric i{font-size:18px;color:var(--plum);display:block;margin-bottom:5px}
+.metric b{display:block;font-family:var(--display);font-size:23px;font-weight:600;line-height:1}
+.metric span{font-size:11px;color:var(--muted);display:block;margin-top:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 13px;border-radius:99px;border:1.5px solid var(--line-2);background:var(--card);font-size:13px;color:var(--muted);font-weight:500}
+.chip.on{background:var(--plum-soft);border-color:#DCCFF6;color:#4A3182}
+
+/* ---------- modal / toast ---------- */
+.ov{position:fixed;inset:0;background:rgba(43,35,64,.46);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:200;padding:18px}
+.modal{background:var(--card);border-radius:var(--r-xl);padding:24px;max-width:400px;width:100%;
+  box-shadow:0 24px 60px -20px rgba(43,35,64,.5);max-height:88dvh;overflow-y:auto}
+.modal h3{font-size:19px;margin-bottom:7px}
+.modal p{font-size:14.5px;color:var(--muted);line-height:1.55}
+.modal-acts{display:flex;gap:9px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+#toasts{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:300;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+@media(min-width:720px){#toasts{bottom:20px}}
+.toast{pointer-events:auto;max-width:460px;width:100%;background:var(--ink);color:#FBF7FF;padding:13px 16px;
+  border-radius:var(--r);font-size:14.5px;line-height:1.45;display:flex;gap:10px;align-items:flex-start;
+  box-shadow:0 14px 34px -12px rgba(43,35,64,.7);animation:pop .2s ease}
+.toast i{font-size:19px;flex:none;margin-top:1px}
+.toast.ok i{color:#7FE3C4}.toast.err i{color:#FFA3B4}.toast.warn i{color:#FFD98A}
+.toast b{font-weight:600}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+
+/* label preview */
+.lbl-prev{display:flex;flex-wrap:wrap;gap:9px}
+.lbl-card{border:1.5px dashed var(--line-2);border-radius:10px;background:#fff;width:1.75in;height:.5in;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:1px 3px}
+.lbl-card .lt{font:600 4.6pt/1.1 var(--font);color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.lbl-card .lc{font:4.6pt/1 var(--mono);color:#333;margin-top:1px}
+.queue-item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.queue-item:last-child{border-bottom:none}
+#printframe{position:fixed;width:0;height:0;border:0;left:-9999px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SIGN-IN GATE ══════════════════ -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-mark"><i class="ti ti-music"></i></div>
+    <h1>Choir Score Library</h1>
+    <div class="gate-sub">Scan a score, keep it, bring it back. That's the whole job.</div>
+
+    <button class="btn btn-primary btn-google" onclick="signIn()">
+      <i class="ti ti-brand-google"></i> Sign in with Google
+    </button>
+    <div class="gate-fine">Use your Google account. We'll remember your name after the first time.</div>
+
+    <div class="barcode-rule"></div>
+
+    <button class="btn btn-guest" onclick="goGuest()">
+      <i class="ti ti-device-desktop"></i> Continue as guest
+    </button>
+    <div class="gate-fine">Guest mode is for the checkout desk — pick your name from the list and use the handheld scanner.</div>
+
+    <div id="gate-msg"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP ══════════════════ -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="brand">
+        <div class="brand-mark"><i class="ti ti-music"></i></div>
+        <div class="brand-txt">
+          <div class="brand-name">Choir Score Library</div>
+          <div class="brand-sub" id="brand-sub">Sharon High School</div>
+        </div>
+      </div>
+      <div class="who">
+        <div class="viewtog" id="viewtog" hidden>
+          <button id="vt-student" onclick="setView('student')">Student</button>
+          <button id="vt-admin" onclick="setView('admin')">Admin</button>
+        </div>
+        <button class="who-chip" id="who-chip" onclick="openAccount()" title="Account">
+          <span class="avatar" id="who-av">?</span>
+          <span class="who-name" id="who-name"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+
+  <div class="wrap">
+    <div id="fb-warn" class="note n-warn" style="margin-bottom:14px" hidden>
+      <i class="ti ti-alert-triangle"></i><span id="fb-warn-msg">Not connected to the database — nothing will save. Check the Firebase config and Firestore rules.</span>
+    </div>
+
+    <!-- ════════ STUDENT · CHECK OUT ════════ -->
+    <section id="p-checkout" class="panel" role="tabpanel">
+      <div id="need-name" class="card" hidden>
+        <div class="card-t"><i class="ti ti-user-heart"></i> First, who are you?</div>
+        <div class="card-d">Pick your name once and we'll keep it linked to your account.</div>
+        <div class="field" style="margin-bottom:12px">
+          <label for="name-pick">Your name</label>
+          <select id="name-pick"></select>
+        </div>
+        <div id="name-type-wrap" hidden style="margin-bottom:12px">
+          <div class="field">
+            <label for="name-type">Type your name (Last name, First name)</label>
+            <input type="text" id="name-type" placeholder="Agarwal, Eesha" autocomplete="name">
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" onclick="saveMyName()"><i class="ti ti-check"></i> That's me</button>
+          <button class="btn btn-sm" id="name-toggle" onclick="toggleNameType()">Name not listed?</button>
+        </div>
+      </div>
+
+      <div id="checkout-live" hidden>
+        <div class="card">
+          <div class="card-t"><i class="ti ti-scan"></i> Scan to check out</div>
+          <div class="card-d" id="scan-hint">Fill the box with the barcode, hold steady about 4–6 inches away.</div>
+
+          <!-- camera (signed-in students) -->
+          <div id="cam-wrap">
+            <div class="scanbox" id="s-cam">
+              <div class="scan-idle" id="s-cam-idle">
+                <i class="ti ti-camera"></i>
+                <p>Tap below to turn on the camera. Your browser will ask for permission the first time.</p>
+              </div>
+            </div>
+            <div class="cam-bar">
+              <button class="btn btn-primary" id="s-cam-btn" onclick="toggleCam('student')"><i class="ti ti-camera"></i> Start camera</button>
+              <button class="btn btn-icon" id="s-torch-btn" onclick="toggleTorch('student')" title="Flashlight" hidden><i class="ti ti-flashlight"></i></button>
+              <button class="btn btn-sm" onclick="toggleManual('s')"><i class="ti ti-keyboard"></i> Type it instead</button>
+            </div>
+          </div>
+
+          <!-- handheld scanner (guest / desk mode) -->
+          <div id="scan-wrap" hidden>
+            <div class="field">
+              <label for="s-manual">Scan or type the barcode</label>
+              <input type="text" id="s-manual" placeholder="S001-P042" autocomplete="off" inputmode="text"
+                     onkeydown="if(event.key==='Enter')studentSubmit()">
+            </div>
+            <div class="cam-bar">
+              <button class="btn btn-primary" onclick="studentSubmit()"><i class="ti ti-arrow-right"></i> Check out</button>
+            </div>
+            <div class="note n-info mt"><i class="ti ti-info-circle"></i><span>The handheld scanner types the code and presses Enter for you — just keep this box selected.</span></div>
+          </div>
+
+          <div id="s-result"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-t"><i class="ti ti-sparkles"></i> Just scanned</div>
+          <div id="s-recent"><div class="empty"><i class="ti ti-music"></i>Nothing yet this session. Scan a score to get started.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ STUDENT · HISTORY ════════ -->
+    <section id="p-history" class="panel" role="tabpanel">
+      <div id="my-alerts"></div>
+      <div class="metrics" id="my-metrics"></div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-history"></i> My scores</div>
+        <div class="card-d">Everything you've signed out. Only Ms. Glenister or a librarian can mark a score returned.</div>
+        <div id="my-list"></div>
+      </div>
+    </section>
+
+    <!-- ════════ ADMIN · RETURN ════════ -->
+    <section id="p-return" class="panel" role="tabpanel">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-t"><i class="ti ti-arrow-down-left"></i> Scan to return</div>
+          <div class="card-d">Only scores that are currently checked out will scan through here.</div>
+          <div class="scanbox" id="a-cam">
+            <div class="scan-idle" id="a-cam-idle">
+              <i class="ti ti-camera"></i>
+              <p>Turn on the camera and scan returns one after another. Fill the box with the barcode, hold steady.</p>
+            </div>
+          </div>
+          <div class="cam-bar">
+            <button class="btn btn-primary" id="a-cam-btn" onclick="toggleCam('admin')"><i class="ti ti-camera"></i> Start camera</button>
+            <button class="btn btn-icon" id="a-torch-btn" onclick="toggleTorch('admin')" title="Flashlight" hidden><i class="ti ti-flashlight"></i></button>
+            <button class="btn btn-sm" onclick="toggleManual('a')"><i class="ti ti-keyboard"></i> Type it instead</button>
+          </div>
+          <div id="a-manual-wrap" hidden style="margin-top:12px">
+            <div class="field">
+              <label for="a-manual">Scan or type the barcode</label>
+              <input type="text" id="a-manual" placeholder="S001-P042" autocomplete="off"
+                     onkeydown="if(event.key==='Enter')adminReturnSubmit()">
+            </div>
+            <div class="cam-bar"><button class="btn btn-primary" onclick="adminReturnSubmit()"><i class="ti ti-arrow-right"></i> Return it</button></div>
+          </div>
+          <div id="a-result"></div>
+        </div>
+        <div class="card">
+          <div class="card-t"><i class="ti ti-clock-hour-4"></i> Still out</div>
+          <div class="card-d" id="out-count"></div>
+          <div id="out-list" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ ADMIN · ATTENDANCE ════════ -->
+    <section id="p-attendance" class="panel" role="tabpanel">
+      <div class="card">
+        <div class="card-t"><i class="ti ti-users"></i> Classes</div>
+        <div class="card-d">Build a class once. Names in a class also fill the picker students use to check out.</div>
+        <div class="chips" id="class-chips" style="margin-bottom:14px"></div>
+        <div class="row">
+          <div class="field" style="flex:2"><label for="new-class-name">New class name</label><input type="text" id="new-class-name" placeholder="e.g. Concert Choir" onkeydown="if(event.key==='Enter')addClass()"></div>
+          <button class="btn btn-primary" onclick="addClass()"><i class="ti ti-plus"></i> Create class</button>
+        </div>
+      </div>
+
+      <div class="card" id="class-detail-card" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="card-t" style="margin-bottom:0"><i class="ti ti-school"></i> <span id="cd-name"></span></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="renameClass()"><i class="ti ti-pencil"></i> Rename</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteClass()"><i class="ti ti-trash"></i> Delete</button>
+          </div>
+        </div>
+        <div class="card-d" id="cd-count"></div>
+
+        <div class="row" style="margin-bottom:16px">
+          <div class="field" style="flex:2"><label for="cd-add-name">Add a person</label>
+            <input type="text" id="cd-add-name" list="known-names" placeholder="Last name, First name" onkeydown="if(event.key==='Enter')addMember()">
+            <datalist id="known-names"></datalist></div>
+          <button class="btn btn-sm btn-primary" onclick="addMember()"><i class="ti ti-user-plus"></i> Add</button>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label for="cd-filter">Checking for</label>
+          <select id="cd-filter" onchange="renderClassStatus()"></select>
+        </div>
+
+        <div class="metrics" id="cd-metrics"></div>
+        <div id="cd-status"></div>
+
+        <div class="card-d" style="margin-top:16px">Everyone in this class</div>
+        <div id="cd-members" class="list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t"><i class="ti ti-bell-ringing"></i> Active alerts</div>
+        <div class="card-d">Students see these the next time they sign in.</div>
+        <div id="alert-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t"><i class="ti ti-shield-lock"></i> Who can see the admin view</div>
+        <div class="card-d">Admins can return scores, edit the library, print barcodes, and send alerts.</div>
+        <div id="admin-list" style="margin-bottom:14px"></div>
+        <div class="row">
+          <div class="field"><label for="new-admin">Add an admin by email</label>
+            <input type="email" id="new-admin" placeholder="name@gmail.com" autocomplete="off"
+                   onkeydown="if(event.key==='Enter')addAdmin()"></div>
+          <button class="btn btn-primary" onclick="addAdmin()"><i class="ti ti-user-plus"></i> Add</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ ADMIN · RECORDS ════════ -->
+    <section id="p-records" class="panel" role="tabpanel">
+      <div class="metrics" id="rec-metrics"></div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-clipboard-list"></i> Records</div>
+        <div class="card-d">Every score that's signed out, and who has it.</div>
+        <div class="chips" style="margin-bottom:12px">
+          <button class="chip on" id="f-out" onclick="setFilter('out')">Checked out</button>
+          <button class="chip" id="f-returned" onclick="setFilter('returned')">Returned</button>
+          <button class="chip" id="f-all" onclick="setFilter('all')">All</button>
+        </div>
+        <input type="text" id="rec-search" placeholder="Search name, score, or barcode…" oninput="renderRecords()" style="margin-bottom:14px">
+        <div id="rec-table"></div>
+      </div>
+    </section>
+
+    <!-- ════════ ADMIN · LIBRARY ════════ -->
+    <section id="p-library" class="panel" role="tabpanel">
+      <div class="card">
+        <div class="card-t"><i class="ti ti-plus"></i> Add a score</div>
+        <div class="card-d">Each score gets its own permanent barcode block. Numbers are never reused, even after a delete.</div>
+        <div class="row">
+          <div class="field" style="flex:3;min-width:180px"><label for="sn">Title</label><input type="text" id="sn" placeholder="e.g. Earth Song"></div>
+          <div class="field" style="flex:2;min-width:150px"><label for="scomp">Composer (optional)</label><input type="text" id="scomp" placeholder="e.g. Frank Ticheli"></div>
+          <div class="field" style="max-width:130px"><label for="scount">Copies</label><input type="number" id="scount" value="100" min="1" max="9999"></div>
+          <button class="btn btn-primary" onclick="addSong()"><i class="ti ti-plus"></i> Add</button>
+        </div>
+        <div class="note n-info mt"><i class="ti ti-info-circle"></i><span>Adding the composer keeps two settings of the same title apart — it shows up everywhere the title does.</span></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-books"></i> The library</div>
+        <div id="lib-table"></div>
+      </div>
+    </section>
+
+    <!-- ════════ ADMIN · PRINT ════════ -->
+    <section id="p-print" class="panel" role="tabpanel">
+      <div class="card">
+        <div class="card-t"><i class="ti ti-printer"></i> Build a label batch</div>
+        <div class="card-d">Sized for 1.75″ × 0.5″ labels, 80 to a sheet. Add as many scores as you like — they fill the sheet back to back.</div>
+        <div class="row">
+          <div class="field" style="flex:3;min-width:200px"><label for="pq-song">Score</label><select id="pq-song" onchange="printSongChange()"></select></div>
+          <div class="field" style="max-width:120px"><label for="pq-from">From copy #</label><input type="number" id="pq-from" value="1" min="1"></div>
+          <div class="field" style="max-width:120px"><label for="pq-to">To copy #</label><input type="number" id="pq-to" value="30" min="1"></div>
+          <button class="btn btn-primary" onclick="queueAdd()"><i class="ti ti-plus"></i> Add to batch</button>
+        </div>
+        <div id="pq-hint" class="note n-info mt" hidden><i class="ti ti-info-circle"></i><span></span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t"><i class="ti ti-stack-2"></i> This batch</div>
+        <div id="queue-list"></div>
+        <div class="row" style="margin-top:14px">
+          <div class="field" style="max-width:170px">
+            <label for="pq-start">Start at label position</label>
+            <input type="number" id="pq-start" value="1" min="1" max="80" oninput="renderQueue()">
+          </div>
+          <div class="field" style="max-width:150px"><label for="pq-offx">Nudge right (in)</label><input type="number" id="pq-offx" value="0" step="0.02"></div>
+          <div class="field" style="max-width:150px"><label for="pq-offy">Nudge down (in)</label><input type="number" id="pq-offy" value="0" step="0.02"></div>
+        </div>
+        <div class="card-d" style="margin:10px 0 0">Position 1 is the top-left label. Bump it up if you're reusing a partly-peeled sheet. The nudge fields shift everything a hair if your printer runs off-centre.</div>
+        <div class="cam-bar" style="margin-top:14px">
+          <button class="btn btn-primary" onclick="printBatch()"><i class="ti ti-printer"></i> Print sheets</button>
+          <button class="btn" onclick="downloadBatch()"><i class="ti ti-download"></i> Download instead</button>
+          <button class="btn btn-sm btn-danger" onclick="queueClear()"><i class="ti ti-trash"></i> Clear batch</button>
+        </div>
+        <div class="note n-warn mt"><i class="ti ti-alert-triangle"></i><span>In the print dialog set <b>Scale: 100%</b> (or "Actual size") and <b>Margins: None</b>, or the labels will drift off the sticker grid.</span></div>
+      </div>
+
+      <div class="card" id="prev-card" hidden>
+        <div class="card-t"><i class="ti ti-eye"></i> Preview <span id="prev-count" style="font-weight:400;font-size:13px;color:var(--muted)"></span></div>
+        <div class="lbl-prev" id="prev-grid"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<iframe id="printframe" title="print"></iframe>
+
+<script>
+'use strict';
+
+/* ═══════════════════ STATE ═══════════════════ */
+let S = { songs:[], nextSeq:1, checkouts:{}, rosters:[], profiles:[], admins:[], alerts:[] };
+let me = { mode:null, email:null, name:null, isAdmin:false, photo:null };
+let view = 'student';
+let activeTab = null;
+let recFilter = 'out';
+let queue = [];
+let sessionScans = [];
+let camState = { inst:null, owner:null, lastCode:'', lastAt:0 };
+let libLoaded = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const fmt = iso => { if(!iso) return '—'; try{ return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }catch{ return iso; } };
+const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+const songLabel = s => s ? (s.composer ? s.name+' — '+s.composer : s.name) : 'Unknown score';
+const seqCode = n => 'S' + String(n).padStart(3,'0');
+const mkbc = (code,n) => code + '-P' + String(n).padStart(3,'0');
+const bcOf = (song,n) => mkbc(seqCode(song.seq), n);
+
+/* ═══════════════════ TABS ═══════════════════ */
+const TABS = {
+  student:[
+    {id:'checkout', label:'Check out', icon:'ti-scan'},
+    {id:'history',  label:'My scores', icon:'ti-history'}
+  ],
+  admin:[
+    {id:'return',     label:'Return',     icon:'ti-arrow-down-left'},
+    {id:'attendance', label:'Attendance', icon:'ti-list-check'},
+    {id:'records',    label:'Records',    icon:'ti-clipboard-list'},
+    {id:'library',    label:'Library',    icon:'ti-books'},
+    {id:'print',      label:'Barcodes',   icon:'ti-printer'}
+  ]
+};
+
+function renderTabs(){
+  const list = TABS[view];
+  $('tabs').innerHTML = list.map(t=>{
+    const badge = (view==='student' && t.id==='history' && myAlerts().length) ? '<span class="dot"></span>' : '';
+    return `<button class="tab${activeTab===t.id?' on':''}" role="tab" data-tab="${t.id}" onclick="go('${t.id}')">
+      <i class="ti ${t.icon}"></i><span>${t.label}</span>${badge}</button>`;
+  }).join('');
+}
+
+function go(id){
+  stopCam();
+  activeTab = id;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  const p = $('p-'+id); if(p) p.classList.add('on');
+  renderTabs();
+  window.scrollTo({top:0,behavior:'instant'});
+  if(id==='checkout')  onCheckoutOpen();
+  if(id==='history')   renderHistory();
+  if(id==='return')    { renderOutList(); }
+  if(id==='records')   { renderRecMetrics(); renderRecords(); }
+  if(id==='library')   renderLibrary();
+  if(id==='print')     { fillPrintSel(); renderQueue(); }
+  if(id==='attendance'){ renderClasses(); renderAlertAdmin(); renderAdminList(); }
+}
+
+function setView(v){
+  if(v==='admin' && !me.isAdmin) return;
+  view = v;
+  $('vt-student').classList.toggle('on', v==='student');
+  $('vt-admin').classList.toggle('on', v==='admin');
+  activeTab = TABS[v][0].id;
+  go(activeTab);
+}
+
+/* ═══════════════════ TOASTS & MODALS ═══════════════════ */
+function toast(msg, kind='ok', ms=3800){
+  const icons = {ok:'ti-circle-check', err:'ti-alert-circle', warn:'ti-alert-triangle', info:'ti-info-circle'};
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `<i class="ti ${icons[kind]||icons.ok}"></i><div>${msg}</div>`;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),320); }, ms);
+}
+
+function confirmBox(msg, okLabel='Confirm'){
+  return new Promise(res=>{
+    const ov = document.createElement('div'); ov.className='ov';
+    ov.innerHTML = `<div class="modal"><h3>Just checking</h3><p>${esc(msg)}</p>
+      <div class="modal-acts"><button class="btn" data-x>Cancel</button><button class="btn btn-primary" data-y>${esc(okLabel)}</button></div></div>`;
+    document.body.appendChild(ov);
+    const done = v => { ov.remove(); res(v); };
+    ov.querySelector('[data-x]').onclick = ()=>done(false);
+    ov.querySelector('[data-y]').onclick = ()=>done(true);
+    ov.onclick = e => { if(e.target===ov) done(false); };
+  });
+}
+
+function infoBox(title, html, okLabel='Got it'){
+  return new Promise(res=>{
+    const ov = document.createElement('div'); ov.className='ov';
+    ov.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><div style="font-size:14.5px;line-height:1.6;color:var(--muted)">${html}</div>
+      <div class="modal-acts"><button class="btn btn-primary" data-y>${esc(okLabel)}</button></div></div>`;
+    document.body.appendChild(ov);
+    const done = ()=>{ ov.remove(); res(true); };
+    ov.querySelector('[data-y]').onclick = done;
+    ov.onclick = e => { if(e.target===ov) done(); };
+  });
+}
+
+function promptBox(title, defVal=''){
+  return new Promise(res=>{
+    const ov = document.createElement('div'); ov.className='ov';
+    ov.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>
+      <div class="field" style="margin-top:10px"><input type="text" id="pb-input" value="${esc(defVal)}"></div>
+      <div class="modal-acts"><button class="btn" data-x>Cancel</button><button class="btn btn-primary" data-y>Save</button></div></div>`;
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#pb-input');
+    setTimeout(()=>{ inp.focus(); inp.select(); }, 60);
+    const done = v => { ov.remove(); res(v); };
+    ov.querySelector('[data-x]').onclick = ()=>done(null);
+    ov.querySelector('[data-y]').onclick = ()=>done(inp.value.trim());
+    inp.onkeydown = e => { if(e.key==='Enter') done(inp.value.trim()); if(e.key==='Escape') done(null); };
+    ov.onclick = e => { if(e.target===ov) done(null); };
+  });
+}
+
+/* ═══════════════════ FIRESTORE ═══════════════════ */
+const DOC = () => db.collection('library').doc('state');
+let saving = false;
+
+async function save(){
+  if(!fbReady || !db) return;
+  try{
+    saving = true;
+    await DOC().set({
+      songs:S.songs, nextSeq:S.nextSeq, checkouts:S.checkouts,
+      rosters:S.rosters, profiles:S.profiles, admins:S.admins, alerts:S.alerts
+    });
+  }catch(e){
+    console.error('Save failed', e);
+    toast('Couldn\'t save that — check your connection and try again.', 'err');
+  }finally{ saving = false; }
+}
+
+function migrate(){
+  let changed = false;
+  let max = 0;
+  S.songs.forEach((s,i)=>{
+    if(typeof s.seq !== 'number'){ s.seq = i+1; changed = true; }
+    if(s.seq > max) max = s.seq;
+  });
+  if(typeof S.nextSeq !== 'number' || S.nextSeq <= max){ S.nextSeq = max + 1; changed = true; }
+  Object.keys(S.checkouts).forEach(bc=>{
+    if(S.checkouts[bc] && !Array.isArray(S.checkouts[bc])){ S.checkouts[bc] = [S.checkouts[bc]]; changed = true; }
+  });
+  (S.rosters||[]).forEach(r=>{
+    if(!Array.isArray(r.members)){
+      const set = new Set();
+      (r.text||'').split('\n').map(l=>l.trim()).filter(Boolean).forEach(line=>{
+        const i = line.indexOf('|');
+        const n = (i===-1 ? line : line.slice(0,i)).trim();
+        if(n) set.add(n);
+      });
+      r.members = [...set];
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function listen(){
+  if(!fbReady || !db){ showWarn('Not connected to the database — nothing will save.'); paint(); return; }
+  DOC().onSnapshot(snap=>{
+    const d = snap.exists ? snap.data() : {};
+    S.songs     = d.songs     || [];
+    S.checkouts = d.checkouts || {};
+    S.rosters   = d.rosters   || [];
+    S.profiles  = d.profiles  || [];
+    S.admins    = d.admins    || [];
+    S.alerts    = d.alerts    || [];
+    S.nextSeq   = d.nextSeq;
+    const changed = migrate();
+    if(changed && me.isAdmin && !saving) save();
+    if(me.mode) refreshIdentity();
+    paint();
+  }, err=>{
+    console.error(err);
+    showWarn('Couldn\'t reach the database. Check the Firestore rules for this project.');
+  });
+}
+
+function showWarn(msg){ $('fb-warn').hidden = false; $('fb-warn-msg').textContent = msg; }
+
+function paint(){
+  if($('app').hidden) return;
+  renderTabs();
+  if(activeTab) go2(activeTab);
+}
+/* re-render current panel without resetting scroll / camera */
+function go2(id){
+  if(id==='checkout')  onCheckoutOpen(true);
+  if(id==='history')   renderHistory();
+  if(id==='return')    renderOutList();
+  if(id==='records')   { renderRecMetrics(); renderRecords(); }
+  if(id==='library')   renderLibrary();
+  if(id==='print')     { fillPrintSel(true); renderQueue(); }
+  if(id==='attendance'){ renderClasses(); renderAlertAdmin(); renderAdminList(); }
+}
+
+/* ═══════════════════ AUTH ═══════════════════ */
+function gateMsg(html, kind='err'){
+  $('gate-msg').innerHTML = html ? `<div class="note n-${kind} mt" style="text-align:left"><i class="ti ti-alert-circle"></i><span>${html}</span></div>` : '';
+}
+
+async function signIn(){
+  if(!auth){ gateMsg('Google sign-in isn\'t set up on this project yet.'); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  try{
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    if(e && (e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment' || e.code==='auth/cancelled-popup-request')){
+      try{ await auth.signInWithRedirect(provider); return; }catch(e2){ console.error(e2); }
+    }
+    if(e && e.code==='auth/popup-closed-by-user') return;
+    console.error(e);
+    gateMsg('Sign-in didn\'t go through. ' + esc(e && e.message ? e.message : ''));
+  }
+}
+
+function goGuest(){
+  me = { mode:'guest', email:null, name:null, isAdmin:false, photo:null };
+  enterApp();
+}
+
+async function signOutNow(){
+  stopCam();
+  try{ if(auth) await auth.signOut(); }catch(e){}
+  me = { mode:null, email:null, name:null, isAdmin:false, photo:null };
+  view = 'student'; activeTab = null; sessionScans = [];
+  $('app').hidden = true; $('gate').hidden = false; gateMsg('');
+}
+
+function isAdminEmail(email){
+  const e = norm(email);
+  if(!e) return false;
+  return SEED_ADMINS.map(norm).includes(e) || (S.admins||[]).map(norm).includes(e);
+}
+
+function profileName(email){
+  const e = norm(email);
+  const p = (S.profiles||[]).find(x=>norm(x.email)===e);
+  return p ? p.name : null;
+}
+
+function refreshIdentity(){
+  if(me.mode !== 'google') return;
+  me.isAdmin = isAdminEmail(me.email);
+  const n = profileName(me.email);
+  if(n) me.name = n;
+  $('viewtog').hidden = !me.isAdmin;
+  if(view==='admin' && !me.isAdmin) setView('student');
+  drawWho();
+}
+
+function drawWho(){
+  const label = me.name || (me.mode==='guest' ? 'Guest desk' : (me.email||'').split('@')[0] || 'Signed in');
+  $('who-name').innerHTML = esc(label) + (me.isAdmin ? '<small>Librarian</small>' : (me.mode==='guest' ? '<small>Guest mode</small>' : ''));
+  const initials = (me.name || label).replace(/[^a-zA-Z ,]/g,'').split(/[\s,]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('') || '♪';
+  $('who-av').textContent = initials;
+  $('brand-sub').textContent = me.isAdmin ? 'Librarian tools' : 'Sharon High School';
+}
+
+function enterApp(){
+  $('gate').hidden = true;
+  $('app').hidden = false;
+  me.isAdmin = me.mode==='google' && isAdminEmail(me.email);
+  if(me.mode==='google' && !me.name) me.name = profileName(me.email);
+  $('viewtog').hidden = !me.isAdmin;
+  view = 'student';
+  $('vt-student').classList.add('on');
+  $('vt-admin').classList.remove('on');
+  drawWho();
+  activeTab = 'checkout';
+  go('checkout');
+  if(me.mode==='google') setTimeout(showAlertPopup, 700);
+}
+
+function openAccount(){
+  const rows = [];
+  if(me.mode==='google'){
+    rows.push(`<b style="color:var(--ink)">${esc(me.name||'Name not set yet')}</b><br>${esc(me.email)}`);
+    rows.push(me.isAdmin ? 'You have librarian access.' : 'Student access.');
+  }else{
+    rows.push('<b style="color:var(--ink)">Guest desk mode</b><br>Nothing is tied to an account — the name picker sets who\'s borrowing.');
+  }
+  const ov = document.createElement('div'); ov.className='ov';
+  ov.innerHTML = `<div class="modal"><h3>Your account</h3>
+    <div style="font-size:14.5px;line-height:1.6;color:var(--muted)">${rows.join('<br><br>')}</div>
+    <div class="modal-acts">
+      ${me.mode==='google' ? '<button class="btn" data-rename><i class="ti ti-edit"></i> Change my name</button>' : ''}
+      <button class="btn btn-danger" data-out><i class="ti ti-logout"></i> ${me.mode==='guest'?'Leave guest mode':'Sign out'}</button>
+      <button class="btn btn-primary" data-close>Close</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = ()=>ov.remove();
+  ov.querySelector('[data-close]').onclick = close;
+  ov.querySelector('[data-out]').onclick = ()=>{ close(); signOutNow(); };
+  const rn = ov.querySelector('[data-rename]');
+  if(rn) rn.onclick = ()=>{ close(); me.name = null; go('checkout'); };
+  ov.onclick = e => { if(e.target===ov) close(); };
+}
+
+/* ═══════════════════ NAMES ═══════════════════ */
+function knownNames(){
+  const set = new Set();
+  (S.rosters||[]).forEach(r=>{ (r.members||[]).forEach(n=>{ if(n) set.add(n); }); });
+  (S.profiles||[]).forEach(p=>{ if(p.name) set.add(p.name); });
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillNamePick(){
+  const sel = $('name-pick');
+  const names = knownNames();
+  sel.innerHTML = '<option value="">— choose your name —</option>' + names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  if(!names.length){
+    sel.innerHTML = '<option value="">No names loaded yet</option>';
+    $('name-type-wrap').hidden = false;
+    $('name-toggle').hidden = true;
+  }
+}
+
+function toggleNameType(){
+  const w = $('name-type-wrap');
+  w.hidden = !w.hidden;
+  $('name-toggle').textContent = w.hidden ? 'Name not listed?' : 'Pick from the list instead';
+  if(!w.hidden) $('name-type').focus();
+}
+
+async function saveMyName(){
+  const typed = $('name-type-wrap').hidden ? '' : $('name-type').value.trim();
+  const picked = $('name-pick').value;
+  const name = typed || picked;
+  if(!name){ toast('Pick your name from the list first.', 'warn'); return; }
+  me.name = name;
+  if(me.mode==='google'){
+    const i = (S.profiles||[]).findIndex(p=>norm(p.email)===norm(me.email));
+    if(i>=0) S.profiles[i].name = name; else S.profiles.push({ email:me.email, name });
+    await save();
+  }
+  drawWho();
+  renderTabs();
+  onCheckoutOpen();
+  toast(`Hi ${esc(name.split(',')[1] ? name.split(',')[1].trim() : name)} — you're all set.`, 'ok');
+}
+
+/* ═══════════════════ BARCODES ═══════════════════ */
+function songBySeq(seq){ return S.songs.find(s=>s.seq===seq) || null; }
+
+function parseBC(raw){
+  const m = String(raw||'').trim().toUpperCase().replace(/\s+/g,'').match(/^S(\d{1,4})-?P(\d{1,4})$/);
+  if(!m) return null;
+  const seq = parseInt(m[1],10), n = parseInt(m[2],10);
+  const song = songBySeq(seq);
+  if(!song) return null;
+  if(n < 1 || n > song.scoreCount) return { song, n, bc:mkbc(seqCode(seq),n), outOfRange:true };
+  return { song, n, bc:mkbc(seqCode(seq),n) };
+}
+
+function activeRec(bc){
+  const arr = S.checkouts[bc];
+  if(!arr || !arr.length) return null;
+  return arr.find(r=>!r.returned) || null;
+}
+
+function allEntries(){
+  const out = [];
+  Object.keys(S.checkouts).forEach(bc=>{ (S.checkouts[bc]||[]).forEach(rec=>out.push({bc,rec})); });
+  return out;
+}
+
+function myEntries(){
+  const e = norm(me.email), n = norm(me.name);
+  return allEntries().filter(({rec})=>{
+    if(e && norm(rec.borrowerEmail)===e) return true;
+    if(!rec.borrowerEmail && n && norm(rec.borrower)===n) return true;
+    return false;
+  }).sort((a,b)=> new Date(b.rec.checkoutDate) - new Date(a.rec.checkoutDate));
+}
+
+/* ═══════════════════ CAMERA ═══════════════════ */
+const H5Q_URLS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+];
+function loadLib(){
+  if(window.Html5Qrcode) return Promise.resolve();
+  if(libLoaded) return libLoaded;
+  libLoaded = new Promise((res,rej)=>{
+    let i = 0;
+    const attempt = ()=>{
+      if(i >= H5Q_URLS.length){ rej(new Error('scanner library unavailable')); return; }
+      const s = document.createElement('script');
+      s.src = H5Q_URLS[i++];
+      s.onload = ()=>res();
+      s.onerror = attempt;
+      document.head.appendChild(s);
+    };
+    attempt();
+  });
+  return libLoaded;
+}
+
+async function toggleCam(who){
+  if(camState.owner === who){ await stopCam(); return; }
+  await stopCam();
+  const hostId = who==='student' ? 's-cam' : 'a-cam';
+  const btn = who==='student' ? $('s-cam-btn') : $('a-cam-btn');
+  const idle = who==='student' ? $('s-cam-idle') : $('a-cam-idle');
+  const torchBtn = who==='student' ? $('s-torch-btn') : $('a-torch-btn');
+
+  if(!window.isSecureContext){
+    toast('Cameras only work over https. Open the site with an https:// address.', 'err', 6000);
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Starting…';
+
+  const qrboxFn = (w,h)=>{
+    const boxW = Math.floor(w*0.88);
+    const boxH = Math.max(64, Math.min(Math.floor(h*0.34), Math.floor(boxW*0.3)));
+    return { width:boxW, height:boxH };
+  };
+  const scanConfig = { fps:10, disableFlip:true, qrbox:qrboxFn };
+
+  /* Not every phone/browser accepts the same camera constraints — some throw
+     instead of quietly ignoring a request they can't fully satisfy. Try the
+     best version first, then fall back to plainer requests rather than
+     giving up on the first failure. */
+  const attempts = [
+    { facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 }, advanced:[{ focusMode:'continuous' }] },
+    { facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } },
+    { facingMode:{ ideal:'environment' } },
+    { facingMode:'environment' }
+  ];
+
+  let inst = null, lastErr = null;
+  try{
+    await loadLib();
+    const F = Html5QrcodeSupportedFormats;
+    inst = new Html5Qrcode(hostId, {
+      formatsToSupport:[F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.EAN_13, F.QR_CODE],
+      experimentalFeatures:{ useBarCodeDetectorIfSupported:true },
+      verbose:false
+    });
+
+    let started = false;
+    for(const constraints of attempts){
+      try{
+        await inst.start(constraints, scanConfig, code => onScan(code, who), () => {});
+        started = true;
+        break;
+      }catch(e){
+        lastErr = e;
+        /* a real permission/hardware problem won't be fixed by trying
+           simpler constraints — stop burning attempts and surface it */
+        const name = (e && e.name) || '';
+        if(name === 'NotAllowedError' || name === 'NotFoundError' || name === 'NotReadableError') break;
+      }
+    }
+    if(!started) throw lastErr || new Error('camera-start-failed');
+
+    idle.style.display = 'none';
+    camState.inst = inst; camState.owner = who;
+    const ret = document.createElement('div');
+    ret.className = 'reticle'; ret.dataset.deco = '1';
+    ret.innerHTML = '<div class="sweep"></div>';
+    $(hostId).appendChild(ret);
+    btn.innerHTML = '<i class="ti ti-camera-off"></i> Stop camera';
+    btn.classList.remove('btn-primary');
+
+    if(torchBtn){
+      torchBtn.hidden = true;
+      torchBtn.dataset.on = 'false';
+      try{
+        const caps = inst.getRunningTrackCameraCapabilities();
+        const torch = caps && caps.torchFeature ? caps.torchFeature() : null;
+        if(torch && torch.isSupported()) torchBtn.hidden = false;
+      }catch(e){ /* flashlight control not available on this device — fine, stay hidden */ }
+    }
+  }catch(e){
+    console.error(e);
+    if(inst){ try{ await inst.clear(); }catch(e2){} }
+    idle.style.display = '';
+    btn.innerHTML = '<i class="ti ti-camera"></i> Start camera';
+    btn.classList.add('btn-primary');
+    const name = (e && e.name) || '';
+    const text = String(e && (e.message||e) || '');
+    let msg;
+    if(name === 'NotAllowedError' || /permission|NotAllowed/i.test(text)){
+      msg = 'The camera is blocked. Allow camera access for this site in your browser settings, then try again.';
+    }else if(name === 'NotFoundError' || /NotFound|no camera/i.test(text)){
+      msg = 'No camera was found on this device. Use "Type it instead."';
+    }else if(name === 'NotReadableError' || /NotReadable|in use|could not start/i.test(text)){
+      msg = 'Another app or browser tab may be using the camera. Close it and try again.';
+    }else if(typeof Html5Qrcode === 'undefined'){
+      msg = 'The scanning tool couldn\'t load — check your internet connection, or an ad/tracker blocker may be blocking it.';
+    }else{
+      msg = 'Couldn\'t start the camera. Use "Type it instead" for now.';
+    }
+    toast(msg, 'err', 6500);
+  }finally{ btn.disabled = false; }
+}
+
+async function toggleTorch(who){
+  if(!camState.inst || camState.owner !== who) return;
+  const torchBtn = who==='student' ? $('s-torch-btn') : $('a-torch-btn');
+  if(!torchBtn) return;
+  try{
+    const caps = camState.inst.getRunningTrackCameraCapabilities();
+    const torch = caps.torchFeature();
+    const next = torchBtn.dataset.on !== 'true';
+    await torch.apply(next);
+    torchBtn.dataset.on = String(next);
+    torchBtn.innerHTML = next ? '<i class="ti ti-flashlight-off"></i>' : '<i class="ti ti-flashlight"></i>';
+  }catch(e){
+    toast('Couldn\'t switch the flashlight on this device.', 'warn');
+  }
+}
+
+async function stopCam(){
+  const who = camState.owner;
+  if(camState.inst){
+    try{ await camState.inst.stop(); }catch(e){}
+    try{ camState.inst.clear(); }catch(e){}
+  }
+  camState.inst = null; camState.owner = null; camState.lastCode = ''; camState.lastAt = 0;
+  ['s-cam','a-cam'].forEach(id=>{
+    const host = $(id); if(!host) return;
+    host.querySelectorAll('[data-deco]').forEach(n=>n.remove());
+  });
+  if($('s-cam-idle')) $('s-cam-idle').style.display = '';
+  if($('a-cam-idle')) $('a-cam-idle').style.display = '';
+  const sb = $('s-cam-btn'), ab = $('a-cam-btn');
+  if(sb){ sb.innerHTML = '<i class="ti ti-camera"></i> Start camera'; sb.classList.add('btn-primary'); }
+  if(ab){ ab.innerHTML = '<i class="ti ti-camera"></i> Start camera'; ab.classList.add('btn-primary'); }
+  ['s-torch-btn','a-torch-btn'].forEach(id=>{
+    const t = $(id); if(!t) return;
+    t.hidden = true; t.dataset.on = 'false';
+    t.innerHTML = '<i class="ti ti-flashlight"></i>';
+  });
+  void who;
+}
+
+function onScan(code, who){
+  const now = Date.now();
+  if(code === camState.lastCode && now - camState.lastAt < 2500) return;
+  camState.lastCode = code; camState.lastAt = now;
+  if(navigator.vibrate) try{ navigator.vibrate(40); }catch(e){}
+  if(who==='student') doCheckout(code);
+  else doReturn(code);
+}
+
+function toggleManual(which){
+  if(which==='s'){
+    const cam = $('cam-wrap'), man = $('scan-wrap');
+    const showMan = cam.hidden === false;
+    cam.hidden = showMan; man.hidden = !showMan;
+    if(showMan){ stopCam(); $('s-manual').focus(); }
+  }else{
+    const w = $('a-manual-wrap');
+    w.hidden = !w.hidden;
+    if(!w.hidden) $('a-manual').focus();
+  }
+}
+
+/* ═══════════════════ STUDENT: CHECK OUT ═══════════════════ */
+function onCheckoutOpen(quiet){
+  const needName = !me.name;
+  $('need-name').hidden = !needName;
+  $('checkout-live').hidden = needName;
+  if(needName){ fillNamePick(); return; }
+
+  const guest = me.mode === 'guest';
+  $('cam-wrap').hidden = guest;
+  $('scan-wrap').hidden = !guest;
+  $('scan-hint').textContent = guest
+    ? 'Aim the handheld scanner at the barcode. Change the name above whenever the next person steps up.'
+    : 'Fill the box with the barcode, hold steady about 4–6 inches away.';
+
+  if(guest){
+    if(!$('guest-name-card')){
+      const card = document.createElement('div');
+      card.className = 'card'; card.id = 'guest-name-card';
+      card.innerHTML = `<div class="card-t"><i class="ti ti-user"></i> Signing out as</div>
+        <div class="row"><div class="field"><select id="guest-pick" onchange="guestPick()"></select></div></div>`;
+      $('checkout-live').prepend(card);
+    }
+    const gp = $('guest-pick');
+    const names = knownNames();
+    gp.innerHTML = names.map(n=>`<option value="${esc(n)}"${n===me.name?' selected':''}>${esc(n)}</option>`).join('');
+    setTimeout(()=>{ const m=$('s-manual'); if(m && !quiet) m.focus(); },80);
+  }
+  renderRecent();
+}
+
+function guestPick(){
+  me.name = $('guest-pick').value;
+  drawWho();
+  const m = $('s-manual'); if(m) m.focus();
+}
+
+function studentSubmit(){
+  const el = $('s-manual');
+  const v = el.value.trim();
+  if(!v) return;
+  el.value = '';
+  doCheckout(v);
+  el.focus();
+}
+
+async function doCheckout(raw){
+  if(!me.name){ toast('Pick your name first.', 'warn'); return; }
+  const info = parseBC(raw);
+  if(!info || info.outOfRange){
+    showResult('s-result', 'err', info && info.outOfRange
+      ? `That copy number isn't in the library — <b>${esc(songLabel(info.song))}</b> only goes up to #${info.song.scoreCount}.`
+      : `Barcode <code>${esc(String(raw).slice(0,24))}</code> isn't in the library. Try another label or ask a librarian.`);
+    toast('Barcode not recognised.', 'err');
+    return;
+  }
+  const existing = activeRec(info.bc);
+  if(existing){
+    const mine = norm(existing.borrowerEmail) === norm(me.email) || (!existing.borrowerEmail && norm(existing.borrower) === norm(me.name));
+    showResult('s-result', 'warn', mine
+      ? `You already have <b>${esc(songLabel(info.song))} #${info.n}</b> — signed out ${fmt(existing.checkoutDate)}.`
+      : `<b>${esc(songLabel(info.song))} #${info.n}</b> is already signed out to someone else. Grab a different copy.`);
+    toast(mine ? 'You already have this one.' : 'That copy is taken.', 'warn');
+    return;
+  }
+  const rec = {
+    id: uid(), songId: info.song.id, songSeq: info.song.seq, songName: songLabel(info.song),
+    scoreNum: info.n, borrower: me.name, borrowerEmail: me.email || '',
+    borrowerMode: me.mode, checkoutDate: new Date().toISOString(), returned:false, returnDate:null, returnedBy:null
+  };
+  if(!S.checkouts[info.bc]) S.checkouts[info.bc] = [];
+  S.checkouts[info.bc].push(rec);
+  await save();
+
+  sessionScans.unshift({ bc:info.bc, label:songLabel(info.song), n:info.n, at:new Date().toISOString(), who:me.name });
+  sessionScans = sessionScans.slice(0,12);
+  showResult('s-result','ok', `<b>${esc(songLabel(info.song))} #${info.n}</b> is yours. <code>${esc(info.bc)}</code>`);
+  toast(`<b>Checked out</b> ${esc(info.song.name)} #${info.n}`, 'ok', 3000);
+  renderRecent();
+}
+
+function showResult(id, kind, html){
+  const map = {ok:'n-ok', err:'n-err', warn:'n-warn', info:'n-info'};
+  const ic  = {ok:'ti-circle-check', err:'ti-alert-circle', warn:'ti-alert-triangle', info:'ti-info-circle'};
+  $(id).innerHTML = `<div class="note ${map[kind]} mt"><i class="ti ${ic[kind]}"></i><span>${html}</span></div>`;
+}
+
+function renderRecent(){
+  const el = $('s-recent'); if(!el) return;
+  if(!sessionScans.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-music"></i>Nothing yet this session. Scan a score to get started.</div>';
+    return;
+  }
+  el.innerHTML = sessionScans.map(s=>`<div class="item">
+    <div class="item-main"><div class="item-t">${esc(s.label)} · #${s.n}</div>
+      <div class="item-s"><span class="mono">${esc(s.bc)}</span> · ${esc(s.who)}</div></div>
+    <span class="pill p-out">Out</span></div>`).join('');
+}
+
+/* ═══════════════════ STUDENT: HISTORY ═══════════════════ */
+function myAlerts(){
+  const e = norm(me.email), n = norm(me.name);
+  return (S.alerts||[]).filter(a=>!a.cleared && ((e && norm(a.email)===e) || (n && norm(a.name)===n)));
+}
+
+async function showAlertPopup(){
+  const mine = myAlerts().filter(a=>!(a.seenBy||[]).map(norm).includes(norm(me.email)));
+  if(!mine.length) return;
+  const html = `<p style="margin-bottom:12px">A librarian flagged this from a recent rehearsal check:</p>
+    <ul style="margin:0 0 4px 18px;line-height:1.7">${mine.map(a=>`<li>${a.expected ? `You don't have <b style="color:var(--ink)">${esc(a.expected)}</b> signed out.` : 'You haven\'t signed anything out.'}</li>`).join('')}</ul>`;
+  await infoBox('Heads up ♪', html, 'Got it');
+  mine.forEach(a=>{ a.seenBy = a.seenBy || []; if(me.email) a.seenBy.push(me.email); });
+  save();
+}
+
+function renderHistory(){
+  const alerts = myAlerts();
+  $('my-alerts').innerHTML = alerts.length
+    ? `<div class="note n-warn" style="margin-bottom:14px"><i class="ti ti-bell-ringing"></i><span>
+        <b>A librarian flagged you.</b><br>${alerts.map(a=>a.expected ? `No sign-out on record for <b>${esc(a.expected)}</b>.` : 'Nothing signed out on record.').join('<br>')}
+        <br>Scan the score on the Check out tab to clear this up.</span></div>`
+    : '';
+
+  const mine = myEntries();
+  const out = mine.filter(x=>!x.rec.returned).length;
+  $('my-metrics').innerHTML = [
+    ['ti-arrow-up-right', out, 'With me now'],
+    ['ti-arrow-down-left', mine.length - out, 'Returned'],
+    ['ti-books', mine.length, 'All time']
+  ].map(([i,n,l])=>`<div class="metric"><i class="ti ${i}"></i><b>${n}</b><span>${l}</span></div>`).join('');
+
+  const el = $('my-list');
+  if(!mine.length){
+    el.innerHTML = `<div class="empty"><i class="ti ti-music-off"></i>Nothing signed out yet.<br>Head to Check out and scan your first score.</div>`;
+    return;
+  }
+  el.innerHTML = mine.map(({bc,rec})=>`<div class="item">
+    <div class="item-main">
+      <div class="item-t">${esc(rec.songName)} · #${rec.scoreNum}</div>
+      <div class="item-s"><span class="mono">${esc(bc)}</span> · signed out ${fmt(rec.checkoutDate)}${rec.returned?` · returned ${fmt(rec.returnDate)}`:''}</div>
+    </div>
+    <span class="pill ${rec.returned?'p-in':'p-out'}">${rec.returned?'Returned':'With me'}</span>
+  </div>`).join('');
+}
+
+/* ═══════════════════ ADMIN: RETURN ═══════════════════ */
+function adminReturnSubmit(){
+  const el = $('a-manual');
+  const v = el.value.trim();
+  if(!v) return;
+  el.value = '';
+  doReturn(v);
+  el.focus();
+}
+
+async function doReturn(raw){
+  if(!me.isAdmin) return;
+  const info = parseBC(raw);
+  if(!info){
+    showResult('a-result','err', `Barcode <code>${esc(String(raw).slice(0,24))}</code> isn't in the library.`);
+    toast('Barcode not recognised.', 'err');
+    return;
+  }
+  const rec = activeRec(info.bc);
+  if(!rec){
+    showResult('a-result','info', `<b>${esc(songLabel(info.song))} #${info.n}</b> isn't signed out — nothing to return.`);
+    toast('Not checked out.', 'warn');
+    return;
+  }
+  rec.returned = true;
+  rec.returnDate = new Date().toISOString();
+  rec.returnedBy = me.email || me.name || 'admin';
+  await save();
+  showResult('a-result','ok', `Returned <b>${esc(rec.songName)} #${rec.scoreNum}</b> from ${esc(rec.borrower)}.`);
+  toast(`<b>Returned</b> ${esc(rec.songName)} #${rec.scoreNum} — ${esc(rec.borrower)}`, 'ok', 3000);
+  renderOutList();
+}
+
+function renderOutList(){
+  const el = $('out-list'); if(!el) return;
+  const out = allEntries().filter(({rec})=>!rec.returned)
+    .sort((a,b)=> new Date(b.rec.checkoutDate) - new Date(a.rec.checkoutDate));
+  $('out-count').textContent = out.length ? `${out.length} score${out.length>1?'s':''} waiting to come back.` : '';
+  if(!out.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-confetti"></i>Every score is back on the shelf.</div>';
+    return;
+  }
+  el.innerHTML = out.map(({bc,rec})=>`<div class="item">
+    <div class="item-main">
+      <div class="item-t">${esc(rec.songName)} · #${rec.scoreNum}</div>
+      <div class="item-s">${esc(rec.borrower)} · ${fmt(rec.checkoutDate)}</div>
+    </div>
+    <button class="btn btn-sm" onclick="quickReturn('${esc(bc)}')"><i class="ti ti-corner-down-left"></i> Return</button>
+  </div>`).join('');
+}
+
+async function quickReturn(bc){
+  const rec = activeRec(bc); if(!rec) return;
+  rec.returned = true; rec.returnDate = new Date().toISOString(); rec.returnedBy = me.email || 'admin';
+  await save();
+  toast(`<b>Returned</b> ${esc(rec.songName)} #${rec.scoreNum}`, 'ok', 2600);
+  renderOutList();
+}
+
+/* ═══════════════════ ADMIN: RECORDS ═══════════════════ */
+function setFilter(f){
+  recFilter = f;
+  ['out','returned','all'].forEach(k=>$('f-'+k).classList.toggle('on', k===f));
+  renderRecords();
+}
+
+function renderRecMetrics(){
+  const all = allEntries().map(e=>e.rec);
+  const out = all.filter(c=>!c.returned).length;
+  const totalCopies = S.songs.reduce((a,s)=>a+(s.scoreCount||0),0);
+  const people = new Set(all.filter(c=>!c.returned).map(c=>norm(c.borrowerEmail || c.borrower))).size;
+  $('rec-metrics').innerHTML = [
+    ['ti-books', S.songs.length, 'Titles'],
+    ['ti-files', totalCopies, 'Copies'],
+    ['ti-arrow-up-right', out, 'Out now'],
+    ['ti-users', people, 'Borrowers'],
+    ['ti-arrow-down-left', all.length - out, 'Returned']
+  ].map(([i,n,l])=>`<div class="metric"><i class="ti ${i}"></i><b>${n}</b><span>${l}</span></div>`).join('');
+}
+
+function renderRecords(){
+  const el = $('rec-table'); if(!el) return;
+  const q = norm($('rec-search') ? $('rec-search').value : '');
+  let rows = allEntries();
+  if(recFilter==='out') rows = rows.filter(({rec})=>!rec.returned);
+  if(recFilter==='returned') rows = rows.filter(({rec})=>rec.returned);
+  if(q) rows = rows.filter(({bc,rec})=>
+    norm(rec.borrower).includes(q) || norm(rec.borrowerEmail).includes(q) ||
+    norm(rec.songName).includes(q) || norm(bc).includes(q));
+  rows.sort((a,b)=> new Date(b.rec.checkoutDate) - new Date(a.rec.checkoutDate));
+
+  if(!rows.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-search"></i>No records match that.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>Barcode</th><th>Score</th><th>Copy</th><th>Name</th><th>Out</th><th>Back</th><th>Status</th></tr></thead>
+    <tbody>${rows.map(({bc,rec})=>`<tr>
+      <td><code>${esc(bc)}</code></td>
+      <td>${esc(rec.songName)}</td>
+      <td>#${rec.scoreNum}</td>
+      <td style="font-weight:500;white-space:nowrap">${esc(rec.borrower)}</td>
+      <td style="white-space:nowrap">${fmt(rec.checkoutDate)}</td>
+      <td style="white-space:nowrap">${fmt(rec.returnDate)}</td>
+      <td><span class="pill ${rec.returned?'p-in':'p-out'}">${rec.returned?'Returned':'Out'}</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ═══════════════════ ADMIN: LIBRARY ═══════════════════ */
+async function addSong(){
+  const name = $('sn').value.trim();
+  const composer = $('scomp').value.trim();
+  const count = parseInt($('scount').value,10);
+  if(!name){ $('sn').focus(); toast('Give the score a title.', 'warn'); return; }
+  if(!count || count < 1){ $('scount').focus(); toast('How many copies?', 'warn'); return; }
+  const seq = S.nextSeq || 1;
+  S.songs.push({ id:uid(), name, composer, scoreCount:count, seq });
+  S.nextSeq = seq + 1;
+  await save();
+  $('sn').value=''; $('scomp').value=''; $('sn').focus();
+  toast(`<b>${esc(name)}</b> added — barcodes <span class="mono">${seqCode(seq)}-P001</span> to <span class="mono">${mkbc(seqCode(seq),count)}</span>`, 'ok', 5000);
+  renderLibrary();
+}
+
+function renderLibrary(){
+  const el = $('lib-table'); if(!el) return;
+  if(!S.songs.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-books"></i>The shelf is empty.<br>Add your first score above.</div>';
+    return;
+  }
+  const sorted = [...S.songs].sort((a,b)=>a.seq-b.seq);
+  el.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>Code</th><th>Score</th><th>Copies</th><th>Barcode range</th><th>Status</th><th></th></tr></thead>
+    <tbody>${sorted.map(s=>{
+      const out = allEntries().filter(({rec})=>rec.songId===s.id && !rec.returned).length;
+      return `<tr>
+        <td><code>${seqCode(s.seq)}</code></td>
+        <td style="font-weight:500">${esc(s.name)}${s.composer?`<span style="font-weight:400;color:var(--muted)"> — ${esc(s.composer)}</span>`:''}</td>
+        <td>${s.scoreCount}</td>
+        <td><span class="mono">${bcOf(s,1)}</span> <span style="color:var(--muted)">→</span> <span class="mono">${bcOf(s,s.scoreCount)}</span></td>
+        <td>${out ? `<span class="pill p-out">${out} out</span>` : '<span class="pill p-in">All in</span>'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-icon btn-sm" title="Edit" onclick="editSong('${s.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-icon btn-sm" title="Records" onclick="songRecords('${s.id}')"><i class="ti ti-history"></i></button>
+          <button class="btn btn-icon btn-sm btn-danger" title="Delete" onclick="delSong('${s.id}')"><i class="ti ti-trash"></i></button>
+        </td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function editSong(id){
+  const s = S.songs.find(x=>x.id===id); if(!s) return;
+  const ov = document.createElement('div'); ov.className='ov';
+  ov.innerHTML = `<div class="modal"><h3>Edit score</h3>
+    <p style="margin-bottom:16px">Barcode block <span class="mono">${seqCode(s.seq)}</span> stays the same. Lowering the copy count won't free those numbers for anything else.</p>
+    <div class="field" style="margin-bottom:12px"><label for="e-name">Title</label><input type="text" id="e-name"></div>
+    <div class="field" style="margin-bottom:12px"><label for="e-comp">Composer (optional)</label><input type="text" id="e-comp"></div>
+    <div class="field"><label for="e-count">Copies</label><input type="number" id="e-count" min="1" max="9999"></div>
+    <div class="modal-acts"><button class="btn" data-x>Cancel</button><button class="btn btn-primary" data-y><i class="ti ti-check"></i> Save changes</button></div></div>`;
+  document.body.appendChild(ov);
+  $('e-name').value = s.name; $('e-comp').value = s.composer||''; $('e-count').value = s.scoreCount;
+  const close = ()=>ov.remove();
+  ov.querySelector('[data-x]').onclick = close;
+  ov.onclick = e => { if(e.target===ov) close(); };
+  ov.querySelector('[data-y]').onclick = async ()=>{
+    const name = $('e-name').value.trim(), comp = $('e-comp').value.trim(), count = parseInt($('e-count').value,10);
+    if(!name || !count || count<1) return;
+    s.name = name; s.composer = comp; s.scoreCount = count;
+    await save(); close(); renderLibrary(); toast('Saved.', 'ok', 2200);
+  };
+}
+
+async function delSong(id){
+  const s = S.songs.find(x=>x.id===id); if(!s) return;
+  if(!(await confirmBox(`Delete "${s.name}" and its checkout records? Barcode block ${seqCode(s.seq)} will be retired for good — no future score will reuse it.`, 'Delete score'))) return;
+  S.songs = S.songs.filter(x=>x.id!==id);
+  Object.keys(S.checkouts).forEach(bc=>{
+    S.checkouts[bc] = (S.checkouts[bc]||[]).filter(r=>r.songId!==id);
+    if(!S.checkouts[bc].length) delete S.checkouts[bc];
+  });
+  await save(); renderLibrary(); toast('Score deleted.', 'ok', 2600);
+}
+
+function songRecords(id){
+  const s = S.songs.find(x=>x.id===id); if(!s) return;
+  setFilter('all');
+  go('records');
+  $('rec-search').value = s.name;
+  renderRecords();
+}
+
+/* ═══════════════════ ADMIN: CLASSES ═══════════════════ */
+let selectedClassId = null;
+let lastClassAlertTargets = [];
+
+function fillClassNamesDatalist(){
+  const dl = $('known-names'); if(!dl) return;
+  dl.innerHTML = knownNames().map(n=>`<option value="${esc(n)}"></option>`).join('');
+}
+
+function renderClasses(){
+  const wrap = $('class-chips'); if(!wrap) return;
+  if(selectedClassId && !(S.rosters||[]).some(r=>r.id===selectedClassId)) selectedClassId = null;
+  wrap.innerHTML = S.rosters.length
+    ? S.rosters.map(r=>`<button class="chip${selectedClassId===r.id?' on':''}" data-cls="${r.id}">
+        ${esc(r.name)} <span style="opacity:.65">· ${(r.members||[]).length}</span></button>`).join('')
+    : '<div class="empty" style="padding:18px"><i class="ti ti-users"></i>No classes yet — create one below.</div>';
+  $('class-detail-card').hidden = !selectedClassId;
+  fillClassNamesDatalist();
+  if(selectedClassId) renderClassDetail();
+}
+
+/* event delegation — element persists across re-renders, so bind once */
+$('class-chips').addEventListener('click', e=>{
+  const b = e.target.closest('[data-cls]'); if(!b) return;
+  selectedClassId = b.dataset.cls; renderClasses();
+});
+$('cd-members').addEventListener('click', e=>{
+  const b = e.target.closest('[data-remove]'); if(!b) return;
+  removeMember(b.dataset.remove);
+});
+
+async function addClass(){
+  const el = $('new-class-name');
+  const name = el.value.trim();
+  if(!name){ el.focus(); return; }
+  if((S.rosters||[]).some(r=>norm(r.name)===norm(name))){ toast('A class with that name already exists.', 'warn'); return; }
+  const cls = { id:uid(), name, members:[] };
+  S.rosters.push(cls);
+  await save();
+  el.value = ''; selectedClassId = cls.id; renderClasses();
+  toast(`<b>${esc(name)}</b> created — add people below.`, 'ok', 3000);
+}
+
+async function renameClass(){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  const name = await promptBox('Rename class', cls.name);
+  if(name === null || !name) return;
+  cls.name = name;
+  await save(); renderClasses(); toast('Renamed.', 'ok', 2000);
+}
+
+async function deleteClass(){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  if(!(await confirmBox(`Delete the class "${cls.name}"? This won't touch any checkout records.`, 'Delete class'))) return;
+  S.rosters = S.rosters.filter(r=>r.id!==cls.id);
+  selectedClassId = null;
+  await save(); renderClasses(); toast('Class deleted.', 'ok', 2200);
+}
+
+async function addMember(){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  const el = $('cd-add-name');
+  const name = el.value.trim();
+  if(!name){ el.focus(); return; }
+  cls.members = cls.members || [];
+  if(cls.members.some(m=>norm(m)===norm(name))){ toast('Already in this class.', 'warn'); el.value=''; return; }
+  cls.members.push(name);
+  await save(); el.value=''; el.focus();
+  renderClasses();
+}
+
+async function removeMember(name){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  cls.members = (cls.members||[]).filter(m=>norm(m)!==norm(name));
+  await save(); renderClasses();
+}
+
+function memberStatus(name, songId){
+  const nl = norm(name);
+  const active = allEntries().filter(({rec})=>norm(rec.borrower)===nl && !rec.returned);
+  if(!songId) return active.length ? { state:'out', items:active.map(({rec})=>rec.songName) } : { state:'missing', items:[] };
+  const song = S.songs.find(s=>s.id===songId);
+  const match = active.find(({rec})=>rec.songId===songId);
+  if(match) return { state:'out', items:[match.rec.songName] };
+  if(active.length) return { state:'wrong', items:active.map(({rec})=>rec.songName), expected: song?songLabel(song):'' };
+  return { state:'missing', items:[], expected: song?songLabel(song):'' };
+}
+
+function renderClassDetail(){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  $('cd-name').textContent = cls.name;
+  const members = (cls.members||[]).slice().sort((a,b)=>a.localeCompare(b));
+  $('cd-count').textContent = members.length ? `${members.length} ${members.length===1?'person':'people'} in this class.` : 'No one added yet.';
+
+  const sel = $('cd-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Anything they\'ve signed out</option>' +
+    [...S.songs].sort((a,b)=>a.seq-b.seq).map(s=>`<option value="${s.id}">${esc(songLabel(s))}</option>`).join('');
+  if(cur && S.songs.some(s=>s.id===cur)) sel.value = cur;
+
+  renderClassStatus();
+
+  $('cd-members').innerHTML = members.length
+    ? members.map(m=>`<div class="item">
+        <div class="item-main item-t" style="font-weight:400">${esc(m)}</div>
+        <button class="btn btn-icon btn-sm btn-danger" data-remove="${esc(m)}" title="Remove"><i class="ti ti-x"></i></button>
+      </div>`).join('')
+    : '<div class="empty" style="padding:18px"><i class="ti ti-user-plus"></i>Add someone above to get started.</div>';
+}
+
+function renderClassStatus(){
+  const cls = S.rosters.find(r=>r.id===selectedClassId); if(!cls) return;
+  const songId = $('cd-filter').value;
+  const members = (cls.members||[]).slice().sort((a,b)=>a.localeCompare(b));
+  if(!members.length){ $('cd-metrics').innerHTML = ''; $('cd-status').innerHTML = ''; return; }
+
+  const results = members.map(name=>({ name, ...memberStatus(name, songId) }));
+  const out = results.filter(r=>r.state==='out');
+  const wrong = results.filter(r=>r.state==='wrong');
+  const missing = results.filter(r=>r.state==='missing');
+  lastClassAlertTargets = [...wrong, ...missing];
+
+  $('cd-metrics').innerHTML = [
+    ['ti-arrow-up-right', out.length, songId?'Have it':'Have something out'],
+    ...(songId ? [['ti-alert-triangle', wrong.length, 'Have something else']] : []),
+    ['ti-x', missing.length, 'Nothing out']
+  ].map(([i,n,l])=>`<div class="metric"><i class="ti ${i}"></i><b>${n}</b><span>${l}</span></div>`).join('');
+
+  let html = '';
+  if(out.length){
+    html += `<div class="note n-ok" style="display:block;margin-bottom:10px"><b>Signed out (${out.length})</b>
+      <ul style="margin:8px 0 0 18px;line-height:1.7">${out.map(r=>`<li>${esc(r.name)} — ${esc(r.items.join(', '))}</li>`).join('')}</ul></div>`;
+  }
+  if(wrong.length){
+    html += `<div class="note n-warn" style="display:block;margin-bottom:10px"><b>Have something else out</b>
+      <ul style="margin:8px 0 0 18px;line-height:1.7">${wrong.map(r=>`<li>${esc(r.name)} — has ${esc(r.items.join(', '))}</li>`).join('')}</ul></div>`;
+  }
+  if(missing.length){
+    html += `<div class="note n-err" style="display:block"><b>Nothing signed out</b>
+      <ul style="margin:8px 0 0 18px;line-height:1.7">${missing.map(r=>`<li>${esc(r.name)}</li>`).join('')}</ul></div>`;
+  }
+  const notOut = wrong.length + missing.length;
+  if(out.length && notOut){
+    html += `<div class="cam-bar" style="margin-top:12px"><button class="btn btn-blush" onclick="sendClassAlerts()">
+      <i class="ti ti-bell-ringing"></i> Send alert to the ${notOut} who don't have it</button></div>`;
+  }
+  $('cd-status').innerHTML = html;
+}
+
+async function sendClassAlerts(){
+  if(!lastClassAlertTargets.length) return;
+  const song = S.songs.find(s=>s.id===$('cd-filter').value);
+  const expectedLabel = song ? songLabel(song) : '';
+  const stamp = new Date().toISOString();
+  lastClassAlertTargets.forEach(r=>{
+    const p = (S.profiles||[]).find(x=>norm(x.name)===norm(r.name));
+    const already = (S.alerts||[]).find(a=>!a.cleared && norm(a.name)===norm(r.name) && norm(a.expected)===norm(expectedLabel));
+    if(already){ already.createdAt = stamp; return; }
+    S.alerts.push({ id:uid(), name:r.name, email:p?p.email:'', expected:expectedLabel, createdAt:stamp, cleared:false, seenBy:[] });
+  });
+  await save();
+  renderAlertAdmin();
+  toast(`<b>Alerts sent</b> — ${lastClassAlertTargets.length} student${lastClassAlertTargets.length>1?'s':''} will see it next time they sign in.`, 'ok', 4200);
+}
+
+function renderAlertAdmin(){
+  const el = $('alert-list'); if(!el) return;
+  const live = (S.alerts||[]).filter(a=>!a.cleared);
+  if(!live.length){ el.innerHTML = '<div class="empty"><i class="ti ti-bell-off"></i>No alerts out right now.</div>'; return; }
+  el.innerHTML = live.map(a=>`<div class="item">
+      <div class="item-main"><div class="item-t">${esc(a.name)}</div>
+        <div class="item-s">${a.expected ? 'Expected '+esc(a.expected) : 'Nothing signed out'} · sent ${fmt(a.createdAt)}${(a.seenBy||[]).length?' · seen':''}</div></div>
+      <button class="btn btn-sm" onclick="clearAlert('${a.id}')"><i class="ti ti-check"></i> Clear</button>
+    </div>`).join('') +
+    `<div class="cam-bar"><button class="btn btn-sm btn-danger" onclick="clearAllAlerts()"><i class="ti ti-bell-off"></i> Clear all ${live.length}</button></div>`;
+}
+
+async function clearAlert(id){
+  const a = (S.alerts||[]).find(x=>x.id===id); if(!a) return;
+  a.cleared = true; await save(); renderAlertAdmin(); toast('Alert cleared.', 'ok', 2000);
+}
+async function clearAllAlerts(){
+  if(!(await confirmBox('Clear every active alert?','Clear all'))) return;
+  (S.alerts||[]).forEach(a=>a.cleared = true);
+  await save(); renderAlertAdmin(); toast('All alerts cleared.', 'ok', 2200);
+}
+
+/* admin management */
+function renderAdminList(){
+  const el = $('admin-list'); if(!el) return;
+  const seeds = SEED_ADMINS.map(e=>({email:e, seed:true}));
+  const extra = (S.admins||[]).filter(e=>!SEED_ADMINS.map(norm).includes(norm(e))).map(e=>({email:e, seed:false}));
+  el.innerHTML = [...seeds, ...extra].map(a=>`<div class="item">
+    <div class="item-main"><div class="item-t" style="font-weight:400">${esc(a.email)}</div>
+      <div class="item-s">${a.seed ? 'Built in — can\'t be removed' : 'Added by a librarian'}</div></div>
+    ${a.seed ? '<span class="pill p-mut">Always on</span>' :
+      `<button class="btn btn-sm btn-danger" onclick="removeAdmin('${esc(a.email)}')"><i class="ti ti-user-minus"></i> Remove</button>`}
+  </div>`).join('');
+}
+
+async function addAdmin(){
+  const el = $('new-admin');
+  const email = el.value.trim().toLowerCase();
+  if(!email) return;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('That doesn\'t look like a valid email address.', 'err'); return; }
+  if(isAdminEmail(email)){ toast('That address already has admin access.', 'warn'); el.value=''; return; }
+  S.admins.push(email);
+  await save(); el.value = ''; renderAdminList();
+  toast(`<b>${esc(email)}</b> can now use the admin view.`, 'ok', 3600);
+}
+
+async function removeAdmin(email){
+  if(!(await confirmBox(`Remove admin access for ${email}?`, 'Remove'))) return;
+  S.admins = (S.admins||[]).filter(e=>norm(e)!==norm(email));
+  await save(); renderAdminList(); refreshIdentity();
+  toast('Admin access removed.', 'ok', 2600);
+}
+
+/* ═══════════════════ BARCODE LABELS ═══════════════════ */
+/* Sheet geometry — Avery 5167 / 8167 style, 1.75" x 0.5", 80 per 8.5x11 sheet */
+const SHEET = { w:8.5, h:11, cols:4, rows:20, lw:1.75, lh:0.5, ml:0.3, mt:0.5, px:2.0625, py:0.5 };
+const PER_SHEET = SHEET.cols * SHEET.rows;
+
+function barcodeSVG(value){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  try{
+    JsBarcode(svg, value, { format:'CODE128', width:1, height:40, displayValue:false, margin:0, background:'#ffffff', lineColor:'#000000' });
+    const w = parseFloat(svg.getAttribute('width')), h = parseFloat(svg.getAttribute('height'));
+    if(w > 0 && h > 0){
+      svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      svg.setAttribute('preserveAspectRatio','none');
+      svg.removeAttribute('width'); svg.removeAttribute('height');
+    }
+  }catch(e){
+    svg.setAttribute('viewBox','0 0 100 40');
+    svg.innerHTML = '<rect width="100" height="40" fill="#fff"/><text x="4" y="26" font-size="12" fill="#c00">bad code</text>';
+  }
+  return svg;
+}
+
+function fillPrintSel(keep){
+  const sel = $('pq-song'); if(!sel) return;
+  const cur = keep ? sel.value : '';
+  if(!S.songs.length){ sel.innerHTML = '<option value="">Add a score in the Library tab first</option>'; return; }
+  sel.innerHTML = [...S.songs].sort((a,b)=>a.seq-b.seq)
+    .map(s=>`<option value="${s.id}">${seqCode(s.seq)} · ${esc(songLabel(s))}</option>`).join('');
+  if(cur && S.songs.some(s=>s.id===cur)) sel.value = cur;
+  printSongChange();
+}
+
+function printSongChange(){
+  const s = S.songs.find(x=>x.id===$('pq-song').value);
+  if(!s) return;
+  $('pq-from').value = 1;
+  $('pq-to').value = s.scoreCount;
+  $('pq-hint').hidden = false;
+  $('pq-hint').querySelector('span').innerHTML =
+    `<b>${esc(s.name)}</b> holds <span class="mono">${bcOf(s,1)}</span> → <span class="mono">${bcOf(s,s.scoreCount)}</span> (${s.scoreCount} copies).`;
+}
+
+function queueAdd(){
+  const s = S.songs.find(x=>x.id===$('pq-song').value);
+  if(!s){ toast('Pick a score first.', 'warn'); return; }
+  const from = parseInt($('pq-from').value,10), to = parseInt($('pq-to').value,10);
+  if(isNaN(from) || isNaN(to) || from < 1 || to < from){ toast('Check the copy range.', 'err'); return; }
+  if(to > s.scoreCount){ toast(`${s.name} only has ${s.scoreCount} copies. Raise the copy count in the Library tab first.`, 'err', 5200); return; }
+  queue.push({ id:uid(), songId:s.id, from, to });
+  renderQueue();
+  toast(`Added ${to-from+1} label${to-from>0?'s':''} for <b>${esc(s.name)}</b>.`, 'ok', 2600);
+}
+
+function queueRemove(id){ queue = queue.filter(q=>q.id!==id); renderQueue(); }
+function queueClear(){ queue = []; renderQueue(); }
+
+function queueLabels(){
+  const out = [];
+  queue.forEach(q=>{
+    const s = S.songs.find(x=>x.id===q.songId);
+    if(!s) return;
+    for(let i=q.from; i<=q.to; i++) out.push({ title:s.name, composer:s.composer||'', bc:bcOf(s,i), n:i });
+  });
+  return out;
+}
+
+function renderQueue(){
+  const el = $('queue-list'); if(!el) return;
+  if(!queue.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-stack-2"></i>Nothing in the batch yet.<br>Pick a score above and add a range.</div>';
+    $('prev-card').hidden = true;
+    return;
+  }
+  const start = Math.min(Math.max(parseInt($('pq-start').value,10)||1,1),PER_SHEET);
+  const total = queueLabels().length;
+  const sheets = Math.ceil((total + start - 1) / PER_SHEET);
+  el.innerHTML = queue.map(q=>{
+    const s = S.songs.find(x=>x.id===q.songId);
+    const n = q.to - q.from + 1;
+    return `<div class="queue-item">
+      <div class="item-main"><div class="item-t">${esc(s?s.name:'Deleted score')} <span style="color:var(--muted);font-weight:400">· ${n} label${n>1?'s':''}</span></div>
+        <div class="item-s"><span class="mono">${s?bcOf(s,q.from):'?'}</span> → <span class="mono">${s?bcOf(s,q.to):'?'}</span></div></div>
+      <button class="btn btn-icon btn-sm btn-danger" title="Remove" onclick="queueRemove('${q.id}')"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('') +
+  `<div class="note n-info mt"><i class="ti ti-file-stack"></i><span><b>${total}</b> label${total>1?'s':''} · <b>${sheets}</b> sheet${sheets>1?'s':''}${start>1?` · starting at position ${start}`:''}</span></div>`;
+  renderPreview();
+}
+
+function renderPreview(){
+  const labels = queueLabels().slice(0,8);
+  const total = queueLabels().length;
+  $('prev-card').hidden = !labels.length;
+  $('prev-count').textContent = total > labels.length ? `(first ${labels.length} of ${total}, actual size)` : '(actual size)';
+  const grid = $('prev-grid');
+  grid.innerHTML = '';
+  labels.forEach(l=>{
+    const d = document.createElement('div');
+    d.className = 'lbl-card';
+    const t = document.createElement('div'); t.className='lt'; t.textContent = l.title;
+    const svg = barcodeSVG(l.bc);
+    svg.style.width = '1.55in'; svg.style.height = '0.2in'; svg.style.display='block';
+    const c = document.createElement('div'); c.className='lc'; c.textContent = `#${l.n} · ${l.bc}`;
+    d.append(t, svg, c);
+    grid.appendChild(d);
+  });
+}
+
+function buildSheetHTML(){
+  const labels = queueLabels();
+  if(!labels.length) return null;
+  const start = Math.min(Math.max(parseInt($('pq-start').value,10)||1,1),PER_SHEET);
+  const offX = parseFloat($('pq-offx').value) || 0;
+  const offY = parseFloat($('pq-offy').value) || 0;
+
+  const slots = [];
+  for(let i=0;i<start-1;i++) slots.push(null);
+  labels.forEach(l=>slots.push(l));
+
+  let sheets = '';
+  for(let p=0; p*PER_SHEET < slots.length; p++){
+    const page = slots.slice(p*PER_SHEET, (p+1)*PER_SHEET);
+    let inner = '';
+    page.forEach((l, idx)=>{
+      if(!l) return;
+      const col = idx % SHEET.cols, row = Math.floor(idx / SHEET.cols);
+      const left = (SHEET.ml + col*SHEET.px + offX).toFixed(4);
+      const top  = (SHEET.mt + row*SHEET.py + offY).toFixed(4);
+      const svg = barcodeSVG(l.bc);
+      svg.setAttribute('class','bcs');
+      inner += `<div class="lab" style="left:${left}in;top:${top}in">
+        <div class="lt">${esc(l.title)}</div>${svg.outerHTML}<div class="lc">#${l.n} &middot; ${esc(l.bc)}</div></div>`;
+    });
+    sheets += `<div class="sheet">${inner}</div>`;
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Choir library barcodes</title><style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{background:#fff;font-family:Arial,Helvetica,sans-serif}
+@page{size:8.5in 11in;margin:0}
+.sheet{position:relative;width:8.5in;height:11in;overflow:hidden;page-break-after:always;break-after:page}
+.sheet:last-child{page-break-after:auto;break-after:auto}
+.lab{position:absolute;width:1.75in;height:.5in;overflow:hidden;display:flex;flex-direction:column;
+     align-items:center;justify-content:center;padding:.01in .05in;text-align:center}
+.lt{font-size:4.6pt;font-weight:bold;line-height:1.05;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bcs{width:1.55in;height:.21in;display:block;margin:.012in 0}
+.lc{font-family:"Courier New",monospace;font-size:4.6pt;line-height:1;color:#111}
+@media screen{body{background:#eee;padding:14px}.sheet{background:#fff;margin:0 auto 14px;box-shadow:0 2px 10px rgba(0,0,0,.2)}}
+</style></head><body>${sheets}</body></html>`;
+}
+
+function printBatch(){
+  const html = buildSheetHTML();
+  if(!html){ toast('Add something to the batch first.', 'warn'); return; }
+  const f = $('printframe');
+  f.srcdoc = html;
+  f.onload = ()=>{
+    try{
+      f.contentWindow.focus();
+      f.contentWindow.print();
+    }catch(e){
+      console.error(e);
+      toast('Your browser blocked printing here — use "Download instead".', 'warn', 5200);
+    }
+  };
+}
+
+function downloadBatch(){
+  const html = buildSheetHTML();
+  if(!html){ toast('Add something to the batch first.', 'warn'); return; }
+  const blob = new Blob([html], { type:'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `choir-barcodes-${new Date().toISOString().slice(0,10)}.html`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  toast('Downloaded. Open the file and press Ctrl/Cmd + P.', 'ok', 5000);
+}
+
+/* ═══════════════════ BOOT ═══════════════════ */
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopCam(); });
+window.addEventListener('pagehide', stopCam);
+
+if(auth){
+  auth.getRedirectResult().catch(e=>console.error(e));
+  auth.onAuthStateChanged(async user=>{
+    if(!user){
+      if(me.mode === 'google'){ me = {mode:null,email:null,name:null,isAdmin:false,photo:null}; $('app').hidden = true; $('gate').hidden = false; }
+      return;
+    }
+    const email = (user.email||'').toLowerCase();
+    me = { mode:'google', email, name:profileName(email), isAdmin:isAdminEmail(email), photo:user.photoURL||null };
+    gateMsg('');
+    enterApp();
+  });
+}else{
+  gateMsg('Google sign-in isn\'t enabled on this Firebase project yet. You can still continue as a guest.', 'warn');
+}
+
+listen();
+</script>
+</body>
+</html>
